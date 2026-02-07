@@ -302,8 +302,8 @@ public class Read_Input {
 			String[] a = list.toArray(new String[list.size()]);
 								
 			assignment_total_rows = a.length;
-			assignment_total_columns = a[0].split(delimited).length;		// a[0].split(delimited) = String[] of the first row (this is the row below the column headers row which was removed already)	
-			assignment_data = new String[assignment_total_rows][assignment_total_columns];
+			assignment_total_columns = (assignment_total_rows > 0) ? a[0].split(delimited).length : 0;		// a[0].split(delimited) = String[] of the first row (this is the row below the column headers row which was removed already)	
+			assignment_data = (assignment_total_rows > 0) ? new String[assignment_total_rows][assignment_total_columns] : null;
 		
 			// read all values from all rows and columns
 			for (int i = 0; i < assignment_total_rows; i++) {		
