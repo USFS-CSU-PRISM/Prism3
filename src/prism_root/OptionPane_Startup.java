@@ -14,7 +14,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with PRISM. If not, see <http://www.gnu.org/licenses/>.
 */
-
 package prism_root;
 
 import java.awt.Dialog;
@@ -33,6 +32,9 @@ import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 
 import javax.management.AttributeNotFoundException;
@@ -73,7 +75,15 @@ public class OptionPane_Startup extends JOptionPane {
 		
 				
 		
-		File memory_file = new File(FilesHandle.get_temporaryFolder() + "/prism_memory.txt");	// Store the last time MAx Memory is saved by users: just an integer number
+		File latest_memory_file = getMostRecentMemoryFile(FilesHandle.get_temporaryFolder());	// Store the last time MAx Memory is saved by users: just an integer number
+		File memory_file = new File(FilesHandle.get_temporaryFolder(), "prism_memory.txt");
+		try {
+			if (latest_memory_file != null) Files.copy(latest_memory_file.toPath(), memory_file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+		memory_file.deleteOnExit();
+		
 		int previous_max_memory = 0;
 		String previous_project_name = "";
 		try {		
@@ -125,7 +135,28 @@ public class OptionPane_Startup extends JOptionPane {
 	}
 	
 	
-	
+	public static File getMostRecentMemoryFile(File folder) {
+	    File[] files = folder.listFiles((dir, name) ->
+	            name.startsWith("prism_memory_") && name.endsWith(".txt"));
+	    if (files == null || files.length == 0) {
+	        return null;
+	    }
+	    File newest = files[0];
+	    for (int i = 1; i < files.length; i++) {
+	        if (files[i].lastModified() > newest.lastModified()) {
+	            newest = files[i];
+	        }
+	    }
+		// delete all but the most recent memory file
+		for (File f : files) {
+			if (!f.equals(newest)) {
+				f.delete();
+			}
+		}
+	    return newest;
+	}
+
+
 	public static void Restart_Project(String currentProject) {
 		File jar_file = new File(Prism3Main.get_main().getClass().getProtectionDomain().getCodeSource().getLocation().getPath());
 		
@@ -180,7 +211,7 @@ class ScrollPane_Popup extends JScrollPane {
 		            Dialog dialog = (Dialog)window;
 		            if (!dialog.isResizable()) {
 		                dialog.setResizable(true);
-		                dialog.setMinimumSize(new Dimension(600, 410));
+		                dialog.setMinimumSize(new Dimension(600, 400));
 		            }
 		        }
 		    }
@@ -215,7 +246,7 @@ class ScrollPane_Popup extends JScrollPane {
 		+ "\nMaximum memory Prism is allowed to use:   " + formatSize(heapMaxSize)
 		+ "\nMemory Prism is using at this moment:   " + formatSize(heapSize - heapFreeSize)
 		+ "\nMemory available for Prism's future use :   " + formatSize(heapMaxSize - heapSize + heapFreeSize));
-		PrismTitleScrollPane readme_scrollpane = new PrismTitleScrollPane("Memory Information", "CENTER", info_TextArea);
+		PrismTitleScrollPane readme_scrollpane = new PrismTitleScrollPane("Memory in PRISM", "CENTER", info_TextArea);
 		
 		
 		
@@ -292,7 +323,6 @@ class ScrollPane_Popup extends JScrollPane {
 	    int z = (63 - Long.numberOfLeadingZeros(v)) / 10;
 	    return String.format("%.1f %sB", (double)v / (1L << (z*10)), " KMGTPE".charAt(z));
 	}
-	
 }
 
 
@@ -301,9 +331,8 @@ class ScrollPane_Popup extends JScrollPane {
 
 class Memory_File {
 	public static void create_memory_file(File memory_file, int max_heap, String previous_project_name) {
-		if (memory_file.exists()) {
-			memory_file.delete();		// Delete the old file before writing new contents
-		}
+		String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+		memory_file = new File(memory_file.getParentFile(), "prism_memory_" + timestamp + ".txt");
 		
 		try (BufferedWriter fileOut = new BufferedWriter(new FileWriter(memory_file))) {			
 			fileOut.write(String.valueOf(max_heap));		
@@ -312,6 +341,6 @@ class Memory_File {
 			fileOut.close();
 		} catch (IOException e) {
 			System.err.println(e.getClass().getName() + ": " + e.getMessage());
-		} 		
+		} 	
 	}
 }
